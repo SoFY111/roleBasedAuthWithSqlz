@@ -2,9 +2,7 @@
 import express from 'express';
 import passport from 'passport';
 
-import User from '../models/user';
-import Role from '../models/role';
-import Permission from '../models/permission';
+import Product from '../models/product';
 
 require('../config/passport')(passport);
 
@@ -12,25 +10,26 @@ import Helper from '../utils/helper';
 const helper = new Helper();
 
 const router = express();
+
+// Create a new Product
 router.post('/', passport.authenticate('jwt', {
 	session: false
 }), function (req, res) {
-	helper.checkPermission(req.user.role_id, 'user_add').then((_rolePerm) => {
-		if (!req.body.role_id || !req.body.email || !req.body.password || !req.body.fullname || !req.body.phone) {
+	helper.checkPermission(req.user.role_id, 'product_add').then((rolePerm) => {
+		if (!req.body.prod_name || !req.body.prod_description || !req.body.prod_image || !req.body.prod_price) {
 			res.status(400).send({
-				msg: 'Please pass Role ID, email, password, phone or fullname.'
+				msg: 'Please pass Product name, description, image or price.'
 			});
 		}
 		else {
-			User
+			Product
 				.create({
-					email: req.body.email,
-					password: req.body.password,
-					fullname: req.body.fullname,
-					phone: req.body.phone,
-					role_id: req.body.role_id
+					prod_name: req.body.prod_name,
+					prod_description: req.body.prod_description,
+					prod_image: req.body.prod_image,
+					prod_price: req.body.prod_price
 				})
-				.then((user) => res.status(201).send(user))
+				.then((product) => res.status(201).send(product))
 				.catch((error) => {
 					console.log(error);
 					res.status(400).send(error);
@@ -41,26 +40,14 @@ router.post('/', passport.authenticate('jwt', {
 	});
 });
 
-// Get List of Users
+// Get List of Products
 router.get('/', passport.authenticate('jwt', {
 	session: false
 }), function (req, res) {
-	helper.checkPermission(req.user.role_id, 'user_get_all').then((rolePerm) => {
-		User
-			.findAll({
-				include: [
-					{ 
-						model: Role,
-						include: [
-							{
-								model: Permission,
-								as: 'permissions'
-							}
-						]
-					}
-				]
-			})
-			.then((users) => res.status(200).send(users))
+	helper.checkPermission(req.user.role_id, 'product_get_all').then((rolePerm) => {
+		Product
+			.findAll()
+			.then((products) => res.status(200).send(products))
 			.catch((error) => {
 				res.status(400).send(error);
 			});
@@ -69,14 +56,14 @@ router.get('/', passport.authenticate('jwt', {
 	});
 });
 
-// Get User by ID
+// Get Product by ID
 router.get('/:id', passport.authenticate('jwt', {
 	session: false
 }), function (req, res) {
-	helper.checkPermission(req.user.role_id, 'user_get').then((rolePerm) => {
-		User
+	helper.checkPermission(req.user.role_id, 'product_get').then((rolePerm) => {
+		Product
 			.findByPk(req.params.id)
-			.then((user) => res.status(200).send(user))
+			.then((product) => res.status(200).send(product))
 			.catch((error) => {
 				res.status(400).send(error);
 			});
@@ -85,32 +72,32 @@ router.get('/:id', passport.authenticate('jwt', {
 	});
 });
 
-// Update a User
+// Update a Product
 router.put('/:id', passport.authenticate('jwt', {
 	session: false
 }), function (req, res) {
-	helper.checkPermission(req.user.role_id, 'role_update').then((rolePerm) => {
-		if (!req.body.role_id || !req.body.email || !req.body.fullname || !req.body.phone) {
+	helper.checkPermission(req.user.role_id, 'product_update').then((rolePerm) => {
+		if (!req.body.prod_name || !req.body.prod_description || !req.body.prod_image || !req.body.prod_price) {
 			res.status(400).send({
-				msg: 'Please pass Role ID, email, password, phone or fullname.'
+				msg: 'Please pass Product name, description, image or price.'
 			});
 		}
 		else {
-			User
+			Product
 				.findByPk(req.params.id)
-				.then((user) => {
-					User.update({
-						email: req.body.email || user.email,
-						fullname: req.body.fullname || user.fullname,
-						phone: req.body.phone || user.phone,
-						role_id: req.body.role_id || user.role_id
+				.then((product) => {
+					Product.update({
+						prod_name: req.body.prod_name,
+						prod_description: req.body.prod_description,
+						prod_image: req.body.prod_image,
+						prod_price: req.body.prod_price 
 					}, {
 						where: {
 							id: req.params.id
 						}
-					}).then(() => {
+					}).then(_ => {
 						res.status(200).send({
-							'message': 'User updated'
+							'message': 'Product updated'
 						});
 					}).catch(err => res.status(400).send(err));
 				})
@@ -123,34 +110,34 @@ router.put('/:id', passport.authenticate('jwt', {
 	});
 });
 
-// Delete a User
+// Delete a Product
 router.delete('/:id', passport.authenticate('jwt', {
 	session: false
 }), function (req, res) {
-	helper.checkPermission(req.user.role_id, 'role_delete').then((rolePerm) => {
+	helper.checkPermission(req.user.role_id, 'product_delete').then((rolePerm) => {
 		if (!req.params.id) {
 			res.status(400).send({
-				msg: 'Please pass user ID.'
+				msg: 'Please pass product ID.'
 			});
 		}
 		else {
-			User
+			Product
 				.findByPk(req.params.id)
-				.then((user) => {
-					if (user) {
-						User.destroy({
+				.then((product) => {
+					if (product) {
+						Product.destroy({
 							where: {
 								id: req.params.id
 							}
-						}).then(() => {
+						}).then(_ => {
 							res.status(200).send({
-								'message': 'User deleted'
+								'message': 'Product deleted'
 							});
 						}).catch(err => res.status(400).send(err));
 					}
 					else {
 						res.status(404).send({
-							'message': 'User not found'
+							'message': 'Product not found'
 						});
 					}
 				})

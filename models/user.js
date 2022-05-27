@@ -2,6 +2,9 @@
 const {
 	Model
 } = require('sequelize');
+
+import bcrypt from 'bcryptjs';
+
 module.exports = (sequelize, DataTypes) => {
 	class User extends Model {
 
@@ -36,5 +39,19 @@ module.exports = (sequelize, DataTypes) => {
 		sequelize,
 		modelName: 'User'
 	});
+
+	User.beforeSave(async (user) => {
+		if (User.password){
+			User.password = bcrypt.hashSync(user.password, bcrypt.genSaltSync(10), null);
+		}
+	});
+
+	User.prototype.comparePassword = (passw, cb) => {
+		bcrypt.compare(passw, this.password, (err, isMatch) => {
+			if (err) return cb(err);
+			cb(null, isMatch);
+		});
+	};
+
 	return User;
 };
